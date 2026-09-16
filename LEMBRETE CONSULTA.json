@@ -1,0 +1,613 @@
+{
+  "name": "LEMBRETE CONSULTA",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "quando estiver em produção, altere o numero do destinatario para esse|: {{ '55' + $('Buscar Paciente').item.json.paciente.celular.replace(/\\D/g, '') + '@s.whatsapp.net' }}\n\n\n\n={{ '55' + ($node[\"Buscar Paciente1\"].json?.paciente?.celular || \"\").replace(/\\D/g, '') + '@s.whatsapp.net' }}\n",
+        "height": 256,
+        "width": 416
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        224,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "502c2b36-b20d-4b6a-960d-4d1b3e25f059",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1vu7GEcMDXZEPdpLgbYKKO_2aY2harl2CIF_kzAu1mng",
+          "mode": "list",
+          "cachedResultName": "TESTE LEMBRETE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vu7GEcMDXZEPdpLgbYKKO_2aY2harl2CIF_kzAu1mng/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Página1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vu7GEcMDXZEPdpLgbYKKO_2aY2harl2CIF_kzAu1mng/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "id_log",
+              "lookupValue": "=={{ $json.id_log }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -560,
+        288
+      ],
+      "id": "02bb5993-1c05-4cd6-b0eb-0ef74156873e",
+      "name": "CONFERIR1",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "NmQnaEFuAMjrMJS6",
+          "name": "updents"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.dentalisnet.com.br/WS/DentalisAPI.svc/paciente/obterCodigo",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "codigo",
+              "value": "={{ $node[\"🧠 Cérebro do Tempo1\"].json[\"id_paciente\"] }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Basic MTM0NDE6OyRIXiErVX05cA=="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -144,
+        304
+      ],
+      "id": "d5d787b6-9c0e-4807-b377-b0dcda039823",
+      "name": "Buscar Paciente1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 60
+            }
+          ]
+        }
+      },
+      "id": "ef489db5-7f24-4437-b4a8-3fb86a430c5e",
+      "name": "⏱️ Gatilho (1h em 1h)1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2224,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.dentalisnet.com.br/WS/DentalisAPI.svc/agenda/listar",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Basic MTM0NDE6OyRIXiErVX05cA=="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5ecbd8c6-cd7e-4794-9994-617e69dcf339",
+      "name": "🔍 1. Listar Profissionais1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -2000,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Lista de IDs dos profissionais ativos fornecida por você\nconst IDS_PERMITIDOS = [\n  \"4471\", \"7038\", \"10183\", \"7081\", \"9369\", \n  \"9942\", \"9480\", \"9418\", \"6498\", \"9729\", \"4469\"\n];\n\nconst input = items[0].json;\nlet dentists = [];\n\n// Trata a entrada (se é array direto ou objeto com chave de array)\nif (Array.isArray(input)) { \n  dentists = input; \n} else { \n  for (let key in input) { \n    if (Array.isArray(input[key])) { dentists = input[key]; break; } \n  } \n}\n\nconst requests = [];\n\n// Função para pegar data no fuso de SP\nfunction getBrDate(days) {\n  const d = new Date();\n  const br = new Date(d.toLocaleString(\"en-US\", {timeZone: \"America/Sao_Paulo\"}));\n  br.setDate(br.getDate() + days);\n  return br.toISOString().split('T')[0];\n}\n\nconst today = getBrDate(0);\nconst tomorrow = getBrDate(1);\n\ndentists.forEach(d => {\n  // Tenta capturar o ID de várias formas comuns em APIs\n  const rawId = d.id || d.ID || d.codigo || d.id_agenda || d.id_profissional;\n  const idStr = rawId ? rawId.toString() : null;\n  const nome = d.nome || d.Nome || d.nome_profissional || \"Dentista\";\n\n  // 2. FILTRO: Só processa se o ID estiver na nossa lista de permitidos\n  if (idStr && IDS_PERMITIDOS.includes(idStr)) {\n    // Gera entrada para hoje\n    requests.push({ \n      json: { \n        dentistId: idStr, \n        dentistName: nome, \n        dateToCheck: today \n      } \n    });\n    // Gera entrada para amanhã\n    requests.push({ \n      json: { \n        dentistId: idStr, \n        dentistName: nome, \n        dateToCheck: tomorrow \n      } \n    });\n  }\n});\n\nreturn requests;"
+      },
+      "id": "ede4c961-7fb8-4e56-bfe4-6b7428d2f08b",
+      "name": "📅 Preparar Datas1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "9a6e3e14-df7a-4bb6-b49a-15da2fb39c6c",
+      "name": "🔄 Loop (1 por vez)1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1456,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.dentalisnet.com.br/WS/DentalisAPI.svc/agenda/horarios/listar",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "agenda",
+              "value": "={{ $json.dentistId }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ $json.dateToCheck }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Basic MTM0NDE6OyRIXiErVX05cA=="
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "id": "da74facd-8cf0-42fb-afad-1e9a544f5235",
+      "name": "📅 2. Checar Agenda1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -1248,
+        304
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!$json.enviar }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "371c4e9b-0089-496e-a1ee-ee77efe0b69e",
+      "name": "Tem mensagem?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "97ab0822-c394-4961-9727-8610ee3b6f66",
+              "leftValue": "={{ $node[\"CONFERIR1\"].json.id_log }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -368,
+        288
+      ],
+      "id": "da36483d-546e-401d-aa75-2bba2d0f395a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1vu7GEcMDXZEPdpLgbYKKO_2aY2harl2CIF_kzAu1mng",
+          "mode": "list",
+          "cachedResultName": "TESTE LEMBRETE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vu7GEcMDXZEPdpLgbYKKO_2aY2harl2CIF_kzAu1mng/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Página1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vu7GEcMDXZEPdpLgbYKKO_2aY2harl2CIF_kzAu1mng/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_log": "={{ $node[\"🧠 Cérebro do Tempo1\"].json[\"id_log\"] }}"
+          },
+          "matchingColumns": [
+            "id_log"
+          ],
+          "schema": [
+            {
+              "id": "id_log",
+              "displayName": "id_log",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        848,
+        592
+      ],
+      "id": "1cd8e89c-2860-4f53-87ed-fcf1f7232fef",
+      "name": "Append row in sheet"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\n// Pega a hora atual no fuso de SP\nconst now = new Date(new Date().toLocaleString(\"en-US\", {timeZone: \"America/Sao_Paulo\"}));\n\n// --- CORREÇÃO DO ERRO DE ITEM PAIRING ---\n// Trocamos .item.json por .last().json para evitar o erro de \"Vários itens correspondentes\"\nconst context = $('🔄 Loop (1 por vez)1').last().json; \nconst apiResponse = items[0].json;\n\n// PALAVRAS PARA IGNORAR (Blacklist)\nconst IGNORED_TERMS = [\n    \"FERIADO\", \"ALMOÇO\", \"ALMOCO\", \"BLOQUEIO\", \"REUNIÃO\", \"REUNIAO\", \n    \"SEM EXPEDIENTE\", \"FECHADO\", \"NÃO ATEN\", \"NAO ATEN\", \"VAZIO\"\n];\n\n// INTERVALO DE FUNCIONAMENTO (09:00 - 19:45)\nconst START_MINUTES = 9 * 60; \nconst END_MINUTES = 19 * 60 + 45;\n\nif (!apiResponse || !apiResponse.horario) {\n  return [{ json: { enviar: false, reason: \"Sem agenda/horários\" } }];\n}\n\n// --- LOGICA PARA PEGAR APENAS O DIA ATUAL DA REQUISIÇÃO ---\nlet slots = [];\nif (Array.isArray(apiResponse.horario)) {\n    // Se a API retornar vários dias, pegamos apenas o primeiro [0]\n    // pois o Loop já está filtrando o dia correto na chamada da API\n    if (apiResponse.horario.length > 0 && Array.isArray(apiResponse.horario[0])) {\n        slots = apiResponse.horario[0];\n    } else {\n        slots = apiResponse.horario;\n    }\n}\n\nfor (const slot of slots) {\n  // Ignora se não tiver ID de paciente ou se for 0\n  if (!slot.id_paciente || slot.id_paciente === 0) continue;\n\n  const rawH = slot.horario || \"\";\n  if (!rawH.includes(':') || rawH.length < 5) continue;\n\n  const hora = rawH.substring(0, 5).trim();\n  let pacienteNomeRaw = rawH.substring(6).trim();\n\n  // 1. Filtro de Expediente\n  const [h, m] = hora.split(':').map(Number);\n  const currentSlotMinutes = h * 60 + m;\n  if (currentSlotMinutes < START_MINUTES || currentSlotMinutes > END_MINUTES) continue;\n\n  // 2. Filtro de Blacklist de nomes\n  if (!pacienteNomeRaw || pacienteNomeRaw.length < 2) continue;\n  const nomeUpper = pacienteNomeRaw.toUpperCase();\n  if (IGNORED_TERMS.some(term => nomeUpper.includes(term))) continue;\n\n  // 3. Cálculo da data correta usando a data que veio do Loop\n  const apptDate = new Date(`${context.dateToCheck} ${hora}:00`);\n  const diff = (apptDate - now) / (1000 * 60 * 60);\n\n  let tipo = null;\n  let quando_texto = \"hoje\";\n\n  if (diff > 23.1 && diff <= 24.9) { \n     tipo = '24h';\n     quando_texto = \"amanhã\";\n  } else if (diff > 11.1 && diff <= 12.9) {\n     tipo = '12h';\n     quando_texto = \"amanhã\";\n  } else if (diff > 1.5 && diff <= 2.5) {\n     tipo = '2h';\n     quando_texto = \"hoje\";\n  }\n\n  // Ignora consultas que já passaram\n  if (diff < 0) continue; \n\n  const currentHour = now.getHours();\n  const isMadrugada = currentHour >= 22 || currentHour < 7;\n\n  if (tipo && !isMadrugada) {\n    results.push({\n      json: { \n        id_log: `${slot.id_paciente}_${context.dateToCheck}_${tipo}`, \n        paciente: { nome: pacienteNomeRaw },\n        id_paciente: slot.id_paciente,\n        dentista: context.dentistName, \n        hora, \n        tipo,\n        quando_texto, \n        enviar: true,\n        dateToCheck: context.dateToCheck \n      }\n    });\n  }\n}\n\n// Se não houver nada para enviar, retorna um aviso informativo\nif (results.length === 0) {\n    return [{ json: { enviar: false, reason: \"Nenhum alerta válido encontrado\" } }];\n}\n\nreturn results;"
+      },
+      "id": "11bc1863-ee13-4e06-9c01-6ff100c65c89",
+      "name": "🧠 Cérebro do Tempo1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1008,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cf08f305-6014-48d7-a12e-bf99c3a2691e",
+              "name": "whatsapp_id",
+              "value": "={{ '55' + $item(0).$node[\"Buscar Paciente1\"].json.paciente.celular.replace(/\\D/g, '') + '@s.whatsapp.net' }}",
+              "type": "string"
+            },
+            {
+              "id": "66a49889-c427-4006-9bfc-0776510091c3",
+              "name": "texto final",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        304
+      ],
+      "id": "903e13bf-8f20-468d-8b56-fe1b51419db2",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "instanceName": "updents",
+        "options_Create_instance": {}
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        848,
+        304
+      ],
+      "id": "d72c0da8-7189-4c4c-84e1-3fcfa248ecff",
+      "name": "Enviar texto1",
+      "credentials": {
+        "evolutionApi": {
+          "id": "LgnqwaP2OE0qLVAF",
+          "name": "Evolution account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-3.5-haiku",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        80,
+        592
+      ],
+      "id": "ab4a4f99-3495-497a-9b96-3095bb131bf9",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "fi71nAtRvxs6nRJ1",
+          "name": "Bell"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "==Você é a assistente virtual da Clínica Updents. Escreva uma mensagem de WhatsApp curta e cordial.\n\nDADOS PARA A MENSAGEM:\n\nPaciente: {{ $json.paciente.nome }}\n\nDentista: {{ $item(0).$node[\"🧠 Cérebro do Tempo1\"].json.dentista }}\n\nHorário: {{ $item(0).$node[\"🧠 Cérebro do Tempo1\"].json.hora }}\n\nQuando: {{ $item(0).$node[\"🧠 Cérebro do Tempo1\"].json.quando_texto }}\n\nTipo: {{ $item(0).$node[\"🧠 Cérebro do Tempo1\"].json.tipo }}\n\nREGRAS OBRIGATÓRIAS:\n1. NOME: Use APENAS o primeiro nome do paciente. Se receber \"Maria Silva\", escreva apenas \"Maria\".\n2. ESTILO: Curto (máximo 3 parágrafos pequenos), profissional e humano. Use emojis como 🦷 ou ✨.\n3. CONTEÚDO POR TIPO:\n   - Se Tipo for \"24h\": Lembrete para AMANHÃ. Peça para o paciente confirmar a presença apenas com \"Ok\".\n   - Se Tipo for \"12h\": Lembrete gentil de que a consulta é AMANHÃ.\n   - Se Tipo for \"2h\": Diga que já estamos nos preparando e aguardamos o paciente HOJE.\n4. VARIÁVEL DE TEMPO: Use o valor exato que está em \"Quando\" (hoje ou amanhã) para não errar o dia.\n\nRESPOSTA:\nEnvie apenas o texto final da mensagem, sem comentários ou aspas.",
+        "options": {
+          "systemMessage": "Você é uma assistente virtual da Clinica Updents. Sua tarefa é escrever uma mensagem de lembrete de agendamento curta, cordial e profissional para o WhatsApp.\n\nDADOS DA CONSULTA:\n\nPaciente: {{ $json.paciente.nome }}\n\nProfissional: {{ $item(0).$node[\"🧠 Cérebro do Tempo1\"].json.dentista }}\n\nHorário: {{ $item(0).$node[\"🧠 Cérebro do Tempo1\"].json.hora }}\n\nTipo de Lembrete: {{ $item(0).$node[\"🧠 Cérebro do Tempo1\"].json.tipo }}\n\nREGRAS DE CONTEÚDO:\n\nLembrete 24h: Seja formal e peça para o paciente confirmar respondendo apenas \"Ok\".\n\nLembrete 12h: Apenas relembre o paciente sobre a consulta agendada e diga que não precisa responder.\n\nLembrete 2h: Diga que já estamos aguardando o paciente na clínica.\n\nREGRAS DE EMOJIS POR PROFISSIONAL:\nVocê deve adaptar os emojis de acordo com o profissional. JAMAIS use o emoji de dente (🦷) para os seguintes profissionais:\n\nDr. Jose Pedro (Ultrassom): Use emojis como 🩺 ou ✨.\n\nDra. Talu (Estética Avançada): Use emojis como ✨, 💆‍♀️ ou 💖.\n\nAline Gadelha (Terapeuta / Acupunturista): Use emojis como 🧘‍♀️, ☯️ ou 🌱.\n\nMiriam Albuquerque (Psicóloga): Use emojis como 🧠, 💬 ou 🤍.\n\nDr. Orlando (Clínico Geral e Ginecologista): Use emojis como 🩺 ou 📋.\n\nPara os demais profissionais (dentistas da Clinica Updents), use emojis moderados como 🦷, ✨ ou 👋.\n\nRESTRIÇÕES:\n\nA mensagem deve ter no máximo 3 parágrafos pequenos.\n\nRESPONDA APENAS COM O TEXTO DA MENSAGEM FINAL."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        64,
+        304
+      ],
+      "id": "83d8e968-6dd0-4f10-b46b-2d6ea1848479",
+      "name": "AI Agent"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "CONFERIR1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "⏱️ Gatilho (1h em 1h)1": {
+      "main": [
+        [
+          {
+            "node": "🔍 1. Listar Profissionais1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 1. Listar Profissionais1": {
+      "main": [
+        [
+          {
+            "node": "📅 Preparar Datas1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📅 Preparar Datas1": {
+      "main": [
+        [
+          {
+            "node": "🔄 Loop (1 por vez)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Loop (1 por vez)1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "📅 2. Checar Agenda1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📅 2. Checar Agenda1": {
+      "main": [
+        [
+          {
+            "node": "🧠 Cérebro do Tempo1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem mensagem?1": {
+      "main": [
+        [
+          {
+            "node": "CONFERIR1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🔄 Loop (1 por vez)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Buscar Paciente1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🔄 Loop (1 por vez)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "🔄 Loop (1 por vez)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🧠 Cérebro do Tempo1": {
+      "main": [
+        [
+          {
+            "node": "Tem mensagem?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Enviar texto1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar texto1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🔄 Loop (1 por vez)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Paciente1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f95c4e5c-6480-4065-8ea7-b06493e2e6d9",
+  "meta": {
+    "instanceId": "2792eb07601249a808c0334c097d8f22a4ded39f0449225dbba86c41a5866aca"
+  },
+  "nodeGroups": [],
+  "id": "CJDSvDnuXbkAAGhO",
+  "tags": []
+}
